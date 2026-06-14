@@ -234,7 +234,10 @@ html, body {
   justify-content: center;
   gap: 10px;
   transition: all 0.15s;
+  margin-bottom: 10px;
 }
+
+.auth-google-btn:last-child { margin-bottom: 0; }
 
 .auth-google-btn:active { transform: scale(0.97); background: var(--surface2); }
 
@@ -1281,6 +1284,36 @@ textarea.form-input { resize: none; min-height: 80px; line-height: 1.5; }
       </svg>
       Continue with Google
     </button>
+
+    <button class="auth-google-btn" onclick="signInWithMicrosoft()">
+      <svg class="google-icon" viewBox="0 0 23 23" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1" y="1" width="10" height="10" fill="#F25022"/>
+        <rect x="12" y="1" width="10" height="10" fill="#7FBA00"/>
+        <rect x="1" y="12" width="10" height="10" fill="#00A4EF"/>
+        <rect x="12" y="12" width="10" height="10" fill="#FFB900"/>
+      </svg>
+      Continue with Microsoft
+    </button>
+
+    <button class="auth-google-btn" onclick="signInWithGithub()">
+      <svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#ffffff">
+        <path d="M12 0.297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385 0.6 0.113 0.82-0.258 0.82-0.577 0-0.285-0.01-1.04-0.015-2.04-3.338 0.724-4.042-1.61-4.042-1.61-0.546-1.385-1.333-1.755-1.333-1.755-1.089-0.745 0.083-0.729 0.083-0.729 1.205 0.084 1.84 1.236 1.84 1.236 1.07 1.835 2.807 1.305 3.492 0.997 0.108-0.776 0.417-1.305 0.76-1.605-2.665-0.305-5.466-1.334-5.466-5.93 0-1.31 0.465-2.38 1.235-3.22-0.135-0.303-0.54-1.523 0.105-3.176 0 0 1.005-0.322 3.3 1.23 0.957-0.266 1.98-0.399 3-0.405 1.02 0.006 2.043 0.139 3.003 0.405 2.28-1.552 3.285-1.23 3.285-1.23 0.645 1.653 0.24 2.873 0.105 3.176 0.765 0.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92 0.42 0.36 0.81 1.096 0.81 2.22 0 1.606-0.015 2.896-0.015 3.286 0 0.315 0.21 0.69 0.825 0.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+      </svg>
+      <span style="color:var(--text)">Continue with GitHub</span>
+    </button>
+
+    <div class="auth-divider">or</div>
+
+    <button class="auth-google-btn" onclick="signInAsGuest()" style="background:transparent;border-style:dashed;">
+      <svg class="google-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text2)">
+        <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+      <span style="color:var(--text2)">Continue as Guest</span>
+    </button>
+    <div style="text-align:center;font-size:11px;color:var(--text3);margin-top:8px;line-height:1.5;padding:0 10px">
+      Guest data is saved on this device's account only. You can add an email &amp; password later to keep it permanently.
+    </div>
   </div>
 </div>
 
@@ -1540,6 +1573,22 @@ textarea.form-input { resize: none; min-height: 80px; line-height: 1.5; }
       <button class="signout-btn" onclick="signOut()">Sign Out</button>
     </div>
 
+    <!-- Guest upgrade banner -->
+    <div id="upgrade-banner" style="display:none;background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.25);border-radius:var(--r-lg);padding:16px;margin-bottom:20px;">
+      <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--amber);margin-bottom:4px;">You're using Guest Mode</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:14px;">
+        Your tasks are saved, but only on this device. Add an email & password now to back up your data and access it from anywhere.
+      </div>
+      <div class="form-group" style="margin-bottom:10px;">
+        <input class="form-input" id="upgrade-email" type="email" placeholder="Email address" style="padding:10px 12px;font-size:14px;" autocomplete="email">
+      </div>
+      <div class="form-group" style="margin-bottom:10px;">
+        <input class="form-input" id="upgrade-password" type="password" placeholder="Create a password" style="padding:10px 12px;font-size:14px;" autocomplete="new-password">
+      </div>
+      <div class="auth-error" id="upgrade-error" style="margin-bottom:10px;"></div>
+      <button class="submit-btn" style="margin:0;padding:11px;font-size:14px;" onclick="upgradeGuestAccount()">Save My Account</button>
+    </div>
+
     <div class="settings-section">
       <div class="settings-section-title">Display</div>
       <div class="settings-row">
@@ -1632,6 +1681,8 @@ function onFirebaseReady() {
   var auth = firebase.auth();
   var db   = firebase.firestore();
   var googleProvider = new firebase.auth.GoogleAuthProvider();
+  var microsoftProvider = new firebase.auth.OAuthProvider('microsoft.com');
+  var githubProvider = new firebase.auth.GithubAuthProvider();
 
   // ===== GLOBAL STATE =====
   var currentUser = null;
@@ -1713,6 +1764,20 @@ function onFirebaseReady() {
     var sAvatar = document.getElementById('settings-avatar');
     var sName = document.getElementById('settings-name');
     var sEmail = document.getElementById('settings-email');
+    var upgradeBanner = document.getElementById('upgrade-banner');
+    var signoutBtn = document.getElementById('signout-btn-wrap');
+
+    if (user.isAnonymous) {
+      if (initials) initials.textContent = '?';
+      if (sAvatar) sAvatar.innerHTML = '?';
+      if (sName) sName.textContent = 'Guest';
+      if (sEmail) sEmail.textContent = 'Not signed in to an account';
+      if (upgradeBanner) upgradeBanner.style.display = 'block';
+      return;
+    }
+
+    if (upgradeBanner) upgradeBanner.style.display = 'none';
+
     var name = user.displayName || user.email || 'User';
     var parts = name.split(' ');
     var ini = parts.length >= 2
@@ -2397,6 +2462,31 @@ function onFirebaseReady() {
     });
   };
 
+  window.signInAsGuest = function() {
+    hideAuthError();
+    auth.signInAnonymously().catch(function(e){
+      showAuthError(friendlyAuthError(e.code));
+    });
+  };
+
+  window.signInWithMicrosoft = function() {
+    hideAuthError();
+    auth.signInWithPopup(microsoftProvider).catch(function(e){
+      if (e.code!=='auth/popup-closed-by-user') showAuthError(friendlyAuthError(e.code));
+    });
+  };
+
+  window.signInWithGithub = function() {
+    hideAuthError();
+    auth.signInWithPopup(githubProvider).catch(function(e){
+      if (e.code==='auth/account-exists-with-different-credential') {
+        showAuthError('An account already exists with this email using a different sign-in method.');
+      } else if (e.code!=='auth/popup-closed-by-user') {
+        showAuthError(friendlyAuthError(e.code));
+      }
+    });
+  };
+
   window.forgotPassword = function() {
     var email = document.getElementById('auth-email').value.trim();
     if (!email) { showAuthError('Enter your email address first.'); return; }
@@ -2411,6 +2501,34 @@ function onFirebaseReady() {
   window.signOut = function() {
     closeSheet('settings');
     auth.signOut().then(function(){ tasks=[]; customFields=[]; showToast('Signed out'); });
+  };
+
+  window.upgradeGuestAccount = function() {
+    var email = document.getElementById('upgrade-email').value.trim();
+    var password = document.getElementById('upgrade-password').value;
+    var errEl = document.getElementById('upgrade-error');
+    errEl.className = 'auth-error';
+
+    if (!email || !password) {
+      errEl.textContent = 'Please fill in both fields.';
+      errEl.className = 'auth-error show';
+      return;
+    }
+    if (password.length < 6) {
+      errEl.textContent = 'Password must be at least 6 characters.';
+      errEl.className = 'auth-error show';
+      return;
+    }
+
+    var credential = firebase.auth.EmailAuthProvider.credential(email, password);
+    currentUser.linkWithCredential(credential).then(function(usercred) {
+      currentUser = usercred.user;
+      updateAvatarUI(currentUser);
+      showToast('Account saved! You can now sign in with this email anywhere.');
+    }).catch(function(e) {
+      errEl.textContent = friendlyAuthError(e.code);
+      errEl.className = 'auth-error show';
+    });
   };
 
   function showAuthError(msg) {
@@ -2429,7 +2547,9 @@ function onFirebaseReady() {
       'auth/too-many-requests':'Too many attempts. Try again later.',
       'auth/network-request-failed':'Network error. Check your connection.',
       'auth/invalid-credential':'Invalid email or password.',
-      'auth/popup-blocked':'Popup blocked. Please allow popups.'
+      'auth/popup-blocked':'Popup blocked. Please allow popups.',
+      'auth/account-exists-with-different-credential':'An account already exists with this email using a different sign-in method.',
+      'auth/operation-not-allowed':'This sign-in method is not enabled. Please contact support.'
     };
     return map[code]||'Something went wrong. Please try again.';
   }
